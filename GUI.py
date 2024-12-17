@@ -75,6 +75,9 @@ class RestaurantManagementSystem(tk.Tk):
         y = (screen_height - window_height) // 2
         login_window.geometry(f"{window_width}x{window_height}+{x}+{y}")
 
+        # 确保登录窗口获得焦点
+        login_window.focus_force()
+
         # 创建标签和输入框
         ttk.Label(login_window, text="用户名:").pack(pady=5)
         username_entry = ttk.Entry(login_window)
@@ -138,39 +141,44 @@ class RestaurantManagementSystem(tk.Tk):
 
     def show_function_selection(self):
         # 功能选择窗口
-        function_window = tk.Toplevel(self)
-        function_window.title("功能选择")
-
+        self.function_window = tk.Toplevel(self)
+        self.function_window.title("功能选择")
+    
         # 窗口居中设置
         window_width = 400
         window_height = 300
-        screen_width = function_window.winfo_screenwidth()
-        screen_height = function_window.winfo_screenheight()
+        screen_width = self.function_window.winfo_screenwidth()
+        screen_height = self.function_window.winfo_screenheight()
         x = (screen_width - window_width) // 2
         y = (screen_height - window_height) // 2
-        function_window.geometry(f"{window_width}x{window_height}+{x}+{y}")
-
+        self.function_window.geometry(f"{window_width}x{window_height}+{x}+{y}")
+    
         # 创建一个框架以居中按钮
-        button_frame = tk.Frame(function_window)
+        button_frame = tk.Frame(self.function_window)
         button_frame.pack(expand=True)
-
+    
         # 创建功能按钮
         edit_menu_button = ttk.Button(button_frame, text="编辑菜单", command=self.edit_menu)
         edit_menu_button.pack(pady=10)
-
+    
         income_expense_button = ttk.Button(button_frame, text="收支明细", command=self.show_income_expense)
         income_expense_button.pack(pady=10)
-
+    
         set_chef_number_button = ttk.Button(button_frame, text="设置厨师数", command=self.set_chef_number)
         set_chef_number_button.pack(pady=10)
-
-        reset_password_button = ttk.Button(button_frame, text="重置管理员密码", command=self.reset_admin_password)
+    
+        reset_password_button = ttk.Button(button_frame, text="修改管理员密码", command=self.modify_password)
         reset_password_button.pack(pady=10)
 
     def edit_menu(self):
+        # 关闭功能选择窗口
+        self.function_window.destroy()
+
         # 创建编辑窗口
         edit_window = tk.Toplevel(self)
         edit_window.title("编辑菜单")
+
+        edit_window.focus_force()
         
         # 窗口居中设置
         window_width = 600
@@ -251,6 +259,15 @@ class RestaurantManagementSystem(tk.Tk):
         ttk.Label(search_frame, text="请输入菜名搜索:").pack(side=tk.LEFT, padx=(0, 5))
         search_entry = ttk.Entry(search_frame)
         search_entry.pack(side=tk.LEFT, expand=True, fill='x', padx=(0, 5))
+
+        #绑定Insert键到新增按钮
+        edit_window.bind('<Insert>', lambda event: add_button.invoke())
+        
+        # 绑定Delete键到删除按钮
+        edit_window.bind('<Delete>', lambda event: delete_button.invoke())
+
+        # 绑定Esc键到退出按钮
+        edit_window.bind('<Escape>', lambda event: exit_button.invoke())
         
         def show_search_result():
             dish_name = search_entry.get()
@@ -259,7 +276,7 @@ class RestaurantManagementSystem(tk.Tk):
             for item in items:
                 values = tree.item(item, 'values')
                 # 检查搜索的菜名是否在当前行的菜名中
-                if dish_name in values[0]:  # values[0] 是菜名
+                if (dish_name in values[0]) and (dish_name!= ""):  # values[0] 是菜名
                     messagebox.showinfo("搜索结果", f"找到菜名: {values[0]}, 售价: {values[1]}, 成本: {values[2]}, 制作时长: {values[3]}")
                     found = True
                     break
@@ -274,6 +291,9 @@ class RestaurantManagementSystem(tk.Tk):
             
         confirm_button = ttk.Button(search_frame, text="确认", command=show_search_result)
         confirm_button.pack(side=tk.LEFT)
+
+        # 绑定回车键到确认按钮
+        edit_window.bind('<Return>', lambda event: confirm_button.invoke())
     
         # 绑定双击事件编辑单元格
         def edit_cell(event):
@@ -301,8 +321,7 @@ class RestaurantManagementSystem(tk.Tk):
 
     def exit_edit(self, edit_window):
         edit_window.destroy()  # 关闭编辑窗口
-        self.focus_set()  # 将焦点转移到功能选择窗口
-
+        self.show_function_selection()  # 重新显示功能选择窗口
 
 
     def show_income_expense(self):
@@ -313,9 +332,109 @@ class RestaurantManagementSystem(tk.Tk):
         # 设置厨师数的逻辑实现
         print("设置厨师数")
 
-    def reset_admin_password(self):
-        # 重置管理员密码的逻辑实现
-        print("重置管理员密码")
+    def modify_password(self):  # 修改函数名称
+        # 创建修改密码窗口
+        modify_window = tk.Toplevel(self)
+        modify_window.title("修改管理员密码")  # 修改窗口标题
+
+        modify_window.focus_force()
+
+        # 窗口居中设置
+        window_width = 400
+        window_height = 300
+        screen_width = modify_window.winfo_screenwidth()
+        screen_height = modify_window.winfo_screenheight()
+        x = (screen_width - window_width) // 2
+        y = (screen_height - window_height) // 2
+        modify_window.geometry(f"{window_width}x{window_height}+{x}+{y}")
+
+        # 创建标签和输入框
+        ttk.Label(modify_window, text="旧密码:").pack(pady=5)
+        old_password_entry = ttk.Entry(modify_window, show="*")
+        old_password_entry.pack(pady=5)
+
+        ttk.Label(modify_window, text="新密码:").pack(pady=5)
+        new_password_entry = ttk.Entry(modify_window, show="*")
+        new_password_entry.pack(pady=5)
+
+        ttk.Label(modify_window, text="确认新密码:").pack(pady=5)
+        confirm_password_entry = ttk.Entry(modify_window, show="*")
+        confirm_password_entry.pack(pady=5)
+
+        old_password_attempts = 0  # 旧密码尝试次数
+        new_password_attempts = 0  # 新密码确认尝试次数
+
+        def change_password():
+            nonlocal old_password_attempts, new_password_attempts
+            old_password = old_password_entry.get()
+            new_password = new_password_entry.get()
+            confirm_password = confirm_password_entry.get()
+
+            # 读取 admininfo.csv 文件以验证旧密码
+            try:
+                with open('admininfo.csv', 'r') as file:
+                    lines = file.readlines()
+                    for i, line in enumerate(lines):
+                        admin_username, admin_password = line.strip().split(',')
+                        if admin_password == old_password:
+                            if new_password == confirm_password:
+                                # 更新密码
+                                lines[i] = f"{admin_username},{new_password}\n"  # 更新密码行
+                                with open('admininfo.csv', 'w') as file_write:
+                                    file_write.writelines(lines)  # 写入新内容
+                                messagebox.showinfo("成功", "密码已成功修改！")
+                                modify_window.destroy()  # 关闭窗口
+                                self.function_window.destroy()  # 关闭功能选择窗口
+                                self.show_function_selection()  # 返回功能选择窗口
+                                return
+                            else:
+                                new_password_attempts += 1
+                                remaining_attempts = 3 - new_password_attempts
+                                if remaining_attempts > 0:
+                                    messagebox.showwarning("警告", f"新密码和确认密码不匹配！您还有 {remaining_attempts} 次机会。")
+                                    new_password_entry.delete(0, tk.END)  # 清空新密码输入框
+                                    confirm_password_entry.delete(0, tk.END)  # 清空确认密码输入框
+                                    modify_window.deiconify()  # 重新显示修改密码窗口
+                                else:
+                                    messagebox.showwarning("警告", "不匹配次数过多，程序将退出。")
+                                    modify_window.destroy()
+                                    self.function_window.destroy()  # 关闭功能选择窗口
+                                    self.show_function_selection()  # 返回功能选择窗口
+                                return
+
+                    old_password_attempts += 1
+                    remaining_attempts = 3 - old_password_attempts
+                    if remaining_attempts > 0:
+                        messagebox.showwarning("警告", f"旧密码错误！您还有 {remaining_attempts} 次机会。")  # 旧密码验证失败
+                        old_password_entry.delete(0, tk.END)  # 清空旧密码输入框
+                        modify_window.deiconify()  # 重新显示修改密码窗口
+                    else:
+                        messagebox.showwarning("警告", "旧密码输入错误次数过多，程序将退出。")
+                        modify_window.destroy()
+                        self.function_window.destroy()  # 关闭功能选择窗口
+                        self.show_function_selection()  # 返回功能选择窗口
+                    return
+
+            except FileNotFoundError:
+                messagebox.showwarning("警告", "admininfo.csv 文件未找到")
+
+        # 创建确认和退出按钮
+        button_frame = ttk.Frame(modify_window)
+        button_frame.pack(pady=10)
+
+        confirm_button = ttk.Button(button_frame, text="确认", command=change_password)
+        confirm_button.pack(side=tk.LEFT, padx=(0, 10))
+
+        exit_button = ttk.Button(button_frame, text="退出", command=lambda: [modify_window.destroy(), self.show_function_selection()])
+        exit_button.pack(side=tk.LEFT)
+
+        # 绑定确认和退出按钮
+        modify_window.bind('<Return>', lambda event: change_password())  # 绑定回车键
+        modify_window.bind('<Escape>', lambda event: modify_window.destroy())  # 绑定Esc键
+
+
+
+
 
 
     def order_mode(self):
