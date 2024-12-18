@@ -3,6 +3,9 @@ from tkinter import ttk
 from tkinter import messagebox  # 引入messagebox模块
 import csv  # 引入csv模块
 from CookManagement import cook_dishes  # 导入cook_dishes函数
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+
 
 class RestaurantManagementSystem(tk.Tk):
     def __init__(self):
@@ -166,116 +169,11 @@ class RestaurantManagementSystem(tk.Tk):
         edit_admin_info_button = ttk.Button(button_frame, text="编辑管理员信息", command=self.edit_admin_info)
         edit_admin_info_button.pack(pady=10)
 
-        income_expense_button = ttk.Button(button_frame, text="收支明细", command=self.show_income_expense)
+        income_expense_button = ttk.Button(button_frame, text="收入明细", command=self.show_profit)
         income_expense_button.pack(pady=10)
 
         set_chef_number_button = ttk.Button(button_frame, text="设置厨师数", command=self.set_chef_number)
         set_chef_number_button.pack(pady=10)
-
-
-    def edit_admin_info(self):
-        # 关闭功能选择窗口
-        self.function_window.destroy()
-
-        # 创建编辑管理员信息窗口
-        edit_admin_window = tk.Toplevel(self)
-        edit_admin_window.title("编辑管理员信息")
-
-        edit_admin_window.focus_force()
-
-        # 窗口居中设置
-        window_width = 400
-        window_height = 300
-        screen_width = edit_admin_window.winfo_screenwidth()
-        screen_height = edit_admin_window.winfo_screenheight()
-        x = (screen_width - window_width) // 2
-        y = (screen_height - window_height) // 2
-        edit_admin_window.geometry(f"{window_width}x{window_height}+{x}+{y}")
-
-        # 创建Treeview表格
-        columns = ("用户名", "密码")
-        tree = ttk.Treeview(edit_admin_window, columns=columns, show='headings')
-        tree.pack(expand=True, fill='both', side=tk.TOP)
-
-        # 设置列标题并自定义样式
-        style = ttk.Style()
-        style.configure("Custom.Treeview", background="#faff72", foreground="black")
-        style.map("Custom.Treeview", background=[('selected', '#ff8936')])  # 选中时的背景色
-
-        for col in columns:
-            tree.heading(col, text=col)
-            tree.column(col, anchor="center")  # 设置列的对齐方式为居中
-
-        tree.configure(style="Custom.Treeview")  # 应用样式
-
-        # 加载管理员信息
-        def load_data():
-            try:
-                with open('admininfo.csv', newline='', encoding='utf-8') as csvfile:
-                    reader = csv.reader(csvfile)
-                    for row in reader:
-                        tree.insert('', 'end', values=row)
-            except FileNotFoundError:
-                messagebox.showwarning("警告", "admininfo.csv 文件未找到")
-
-        load_data()
-
-        # 新增空白行的函数
-        def add_blank_row():
-            tree.insert('', 'end', values=("", ""))  # 插入一行空白行
-
-        # 删除选中行的函数
-        def delete_selected_row():
-            selected_item = tree.selection()  # 获取选中行
-            if selected_item:
-                for item in selected_item:
-                    tree.delete(item)  # 删除选中的行
-
-        # 更新管理员信息的函数
-        def save_edit(item, col_index, new_value):
-            tree.item(item, values=[*tree.item(item, 'values')[:col_index], new_value, *tree.item(item, 'values')[col_index + 1:]])
-
-            # 更新admininfo.csv文件
-            try:
-                with open('admininfo.csv', 'w', newline='', encoding='utf-8') as csvfile:
-                    writer = csv.writer(csvfile)
-                    for child in tree.get_children():
-                        writer.writerow(tree.item(child, 'values'))
-            except Exception as e:
-                messagebox.showwarning("警告", f"保存信息时出错: {e}")
-
-        # 双击事件编辑单元格
-        def edit_cell(event):
-            item = tree.focus()
-            column = tree.identify_column(event.x)
-            col_index = int(column.replace('#', '')) - 1
-            old_value = tree.item(item, 'values')[col_index]
-            entry = ttk.Entry(edit_admin_window)
-            entry.insert(0, old_value)
-            entry.bind('<Return>', lambda e: [save_edit(item, col_index, entry.get()), entry.destroy()])  # 确保回车键调用save_edit函数
-            entry.bind('<Escape>', lambda e: entry.destroy())
-            entry.place(x=event.x, y=event.y)
-            entry.focus_set()
-
-        tree.bind('<Double-1>', edit_cell)
-
-        # 创建按钮框架
-        button_frame = ttk.Frame(edit_admin_window)
-        button_frame.pack(side=tk.BOTTOM, pady=10)
-
-        # 创建新增按钮
-        add_button = ttk.Button(button_frame, text="新增", command=add_blank_row)
-        add_button.pack(side=tk.LEFT, padx=5)
-
-        # 创建删除按钮
-        delete_button = ttk.Button(button_frame, text="删除", command=delete_selected_row)
-        delete_button.pack(side=tk.LEFT, padx=5)
-
-        # 创建退出按钮
-        exit_button = ttk.Button(button_frame, text="退出", command=lambda: [edit_admin_window.destroy(), self.show_function_selection()])
-        exit_button.pack(side=tk.LEFT, padx=5)
-
-
 
     def edit_menu(self):
         # 关闭功能选择窗口
@@ -379,22 +277,91 @@ class RestaurantManagementSystem(tk.Tk):
         def show_search_result():
             dish_name = search_entry.get()
             items = tree.get_children()  # 获取所有行
-            found = False  # 用于标记是否找到菜名
+            found_items = []  # 用于存储找到的菜品信息
             for item in items:
                 values = tree.item(item, 'values')
                 # 检查搜索的菜名是否在当前行的菜名中
-                if (dish_name in values[0]) and (dish_name!= ""):  # values[0] 是菜名
-                    messagebox.showinfo("搜索结果", f"找到菜名: {values[0]}, 售价: {values[1]}, 成本: {values[2]}, 制作时长: {values[3]}")
-                    found = True
-                    break
-                
-            if not found:
-                messagebox.showinfo("搜索结果", "未找到匹配的菜品")
+                if (dish_name in values[0]) and (dish_name != ""):  # values[0] 是菜名
+                    found_items.append(values)
             
+            # 确认是否找到匹配的菜品
+            if found_items:
+                # 将搜索结果写入SearchDishes.csv
+                try:
+                    with open('SearchDishes.csv', 'w', newline='', encoding='utf-8') as csvfile:
+                        writer = csv.writer(csvfile)
+                        writer.writerow(["菜名", "售价/元", "成本/元", "制作时长/min"])  # 写入表头
+                        writer.writerows(found_items)  # 写入找到的菜品信息
+                except Exception as e:
+                    messagebox.showwarning("警告", f"写入SearchDishes.csv时出错: {e}")
+            
+                # 创建新窗口以显示搜索结果
+                result_window = tk.Toplevel(self)
+                result_window.title("搜索结果")
+            
+                # 窗口居中设置
+                window_width = 600
+                window_height = 400
+                screen_width = result_window.winfo_screenwidth()
+                screen_height = result_window.winfo_screenheight()
+                x = (screen_width - window_width) // 2
+                y = (screen_height - window_height) // 2
+                result_window.geometry(f"{window_width}x{window_height}+{x}+{y}")
+            
+                # 创建Treeview表格显示搜索结果
+                search_columns = ("菜名", "售价/元", "成本/元", "制作时长/min")
+                result_tree = ttk.Treeview(result_window, columns=search_columns, show='headings')
+                result_tree.pack(expand=True, fill='both', side=tk.TOP)
+            
+                # 设置列标题和宽度
+                for col in search_columns:
+                    result_tree.heading(col, text=col)
+                    result_tree.column(col, anchor="center", width=150)  # 设置列的宽度和对齐方式
+                    
+                # 插入找到的菜品信息到表格中
+                for row in found_items:
+                    result_tree.insert('', 'end', values=row)
+            
+                # 创建新搜索框和确认按钮
+                search_frame = ttk.Frame(result_window)
+                search_frame.pack(side=tk.BOTTOM, fill='x', pady=10)
+            
+                ttk.Label(search_frame, text="请输入菜名搜索:").pack(side=tk.LEFT, padx=(0, 5))
+                new_search_entry = ttk.Entry(search_frame)
+                new_search_entry.insert(0, dish_name)  # 将之前的搜索菜名填入新的搜索框
+                new_search_entry.pack(side=tk.LEFT, expand=True, fill='x', padx=(0, 5))
+            
+                def new_show_search_result():
+                    new_dish_name = new_search_entry.get()
+                    new_found_items = []  # 用于存储新搜索的匹配项
+                    for item in items:
+                        values = tree.item(item, 'values')
+                        if (new_dish_name in values[0]) and (new_dish_name != ""):
+                            new_found_items.append(values)
+            
+                    # 清理结果树
+                    for i in result_tree.get_children():
+                        result_tree.delete(i)
+            
+                    if new_found_items:
+                        for row in new_found_items:
+                            result_tree.insert('', 'end', values=row)
+                    else:
+                        messagebox.showinfo("搜索结果", "未找到匹配的菜品")
+            
+                confirm_button = ttk.Button(search_frame, text="确认", command=new_show_search_result)
+                confirm_button.pack(side=tk.LEFT)
+            
+            else:
+                messagebox.showinfo("搜索结果", "未找到匹配的菜品")
+        
             search_entry.delete(0, tk.END)  # 清空文本框
             edit_window.lift()  # 保持编辑窗口在最上面
             self.focus_set()  # 聚焦回功能选择窗口
             edit_window.focus_force()  # 强制编辑窗口获得焦点
+
+
+
             
         confirm_button = ttk.Button(search_frame, text="确认", command=show_search_result)
         confirm_button.pack(side=tk.LEFT)
@@ -424,17 +391,187 @@ class RestaurantManagementSystem(tk.Tk):
                 entry.destroy()
     
         tree.bind('<Double-1>', edit_cell)
-    
-
     def exit_edit(self, edit_window):
         edit_window.destroy()  # 关闭编辑窗口
         self.show_function_selection()  # 重新显示功能选择窗口
 
+    def edit_admin_info(self):
+        # 关闭功能选择窗口
+        self.function_window.destroy()
 
-    def show_income_expense(self):
-        # 显示收支明细的逻辑实现
-        print("显示收支明细")
+        # 创建编辑管理员信息窗口
+        edit_admin_window = tk.Toplevel(self)
+        edit_admin_window.title("编辑管理员信息")
 
+        edit_admin_window.focus_force()
+
+        # 窗口居中设置
+        window_width = 400
+        window_height = 300
+        screen_width = edit_admin_window.winfo_screenwidth()
+        screen_height = edit_admin_window.winfo_screenheight()
+        x = (screen_width - window_width) // 2
+        y = (screen_height - window_height) // 2
+        edit_admin_window.geometry(f"{window_width}x{window_height}+{x}+{y}")
+
+        # 创建Treeview表格
+        columns = ("用户名", "密码")
+        tree = ttk.Treeview(edit_admin_window, columns=columns, show='headings')
+        tree.pack(expand=True, fill='both', side=tk.TOP)
+
+        # 设置列标题并自定义样式
+        style = ttk.Style()
+        style.configure("Custom.Treeview", background="#faff72", foreground="black")
+        style.map("Custom.Treeview", background=[('selected', '#ff8936')])  # 选中时的背景色
+
+        for col in columns:
+            tree.heading(col, text=col)
+            tree.column(col, anchor="center")  # 设置列的对齐方式为居中
+
+        tree.configure(style="Custom.Treeview")  # 应用样式
+
+        # 加载管理员信息
+        def load_data():
+            try:
+                with open('admininfo.csv', newline='', encoding='utf-8') as csvfile:
+                    reader = csv.reader(csvfile)
+                    for row in reader:
+                        tree.insert('', 'end', values=row)
+            except FileNotFoundError:
+                messagebox.showwarning("警告", "admininfo.csv 文件未找到")
+
+        load_data()
+
+        # 新增空白行的函数
+        def add_blank_row():
+            tree.insert('', 'end', values=("", ""))  # 插入一行空白行
+
+        # 删除选中行的函数
+        def delete_selected_row():
+            selected_item = tree.selection()  # 获取选中行
+            if selected_item:
+                for item in selected_item:
+                    tree.delete(item)  # 删除选中的行
+
+        # 更新管理员信息的函数
+        def save_edit(item, col_index, new_value):
+            tree.item(item, values=[*tree.item(item, 'values')[:col_index], new_value, *tree.item(item, 'values')[col_index + 1:]])
+
+            # 更新admininfo.csv文件
+            try:
+                with open('admininfo.csv', 'w', newline='', encoding='utf-8') as csvfile:
+                    writer = csv.writer(csvfile)
+                    for child in tree.get_children():
+                        writer.writerow(tree.item(child, 'values'))
+            except Exception as e:
+                messagebox.showwarning("警告", f"保存信息时出错: {e}")
+
+        # 双击事件编辑单元格
+        def edit_cell(event):
+            item = tree.focus()
+            column = tree.identify_column(event.x)
+            col_index = int(column.replace('#', '')) - 1
+            old_value = tree.item(item, 'values')[col_index]
+            entry = ttk.Entry(edit_admin_window)
+            entry.insert(0, old_value)
+            entry.bind('<Return>', lambda e: [save_edit(item, col_index, entry.get()), entry.destroy()])  # 确保回车键调用save_edit函数
+            entry.bind('<Escape>', lambda e: entry.destroy())
+            entry.place(x=event.x, y=event.y)
+            entry.focus_set()
+
+        tree.bind('<Double-1>', edit_cell)
+
+        # 创建按钮框架
+        button_frame = ttk.Frame(edit_admin_window)
+        button_frame.pack(side=tk.BOTTOM, pady=10)
+
+        # 创建新增按钮
+        add_button = ttk.Button(button_frame, text="新增", command=add_blank_row)
+        add_button.pack(side=tk.LEFT, padx=5)
+
+        # 创建删除按钮
+        delete_button = ttk.Button(button_frame, text="删除", command=delete_selected_row)
+        delete_button.pack(side=tk.LEFT, padx=5)
+
+        # 创建退出按钮
+        exit_button = ttk.Button(button_frame, text="退出", command=lambda: [edit_admin_window.destroy(), self.show_function_selection()])
+        exit_button.pack(side=tk.LEFT, padx=5)
+    def show_profit(self):
+        daily_profit = {}  # 用于存储每日总利润
+
+        try:
+            with open('Bills.txt', 'r', encoding='utf-8') as file:
+                lines = file.readlines()
+                current_date = ""
+                for line in lines:
+                    line = line.strip()
+                    if line.startswith("下单时间:"):
+                        # 提取日期部分
+                        current_date = line.split()[1].split(" ")[0]  # 获取日期
+                        if current_date not in daily_profit:
+                            daily_profit[current_date] = 0  # 初始化日期的总利润为0
+                    elif line.startswith("总利润:"):
+                        # 提取利润
+                        profit = float(line[5:-1])  # 取出利润并转换为浮点数
+                        if current_date:
+                            daily_profit[current_date] += profit  # 累加到对应日期的利润
+
+        except FileNotFoundError:
+            messagebox.showwarning("警告", "Bills.txt 文件未找到")
+            return
+
+        # 将每日利润写入Profit.csv文件
+        self.write_profit_to_csv(daily_profit)
+
+        # 绘制利润分析图
+        if daily_profit:
+            dates = list(daily_profit.keys())
+            profits = list(daily_profit.values())
+
+            # 创建新的窗口
+            profit_window = tk.Toplevel(self)
+            profit_window.title("每日利润分析")
+
+            # 设置窗口大小
+            window_width = 900  # 设置宽度
+            window_height = 500  # 设置高度
+            profit_window.geometry(f"{window_width}x{window_height}")
+
+            # 计算屏幕中心位置
+            screen_width = profit_window.winfo_screenwidth()
+            screen_height = profit_window.winfo_screenheight()
+            x = (screen_width - window_width) // 2
+            y = (screen_height - window_height) // 2
+            profit_window.geometry(f"{window_width}x{window_height}+{x}+{y}")  # 重新设置窗口位置
+
+            # 创建Figure
+            fig = plt.Figure(figsize=(10, 5))
+            ax = fig.add_subplot(111)  # 创建一个子图
+            ax.plot(dates, profits, marker='o', linestyle='-', color='b')
+            ax.set_title("每日利润趋势图", fontproperties='SimHei')  # 使用SimHei字体显示中文
+            ax.set_xlabel("日期", fontproperties='SimHei')  # 使用SimHei字体显示中文
+            ax.set_ylabel("总利润 (元)", fontproperties='SimHei')  # 使用SimHei字体显示中文
+
+            # 自动格式化x轴日期
+            ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: dates[int(x)] if int(x) < len(dates) else ''))
+            ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))  # 限制x轴刻度为整数
+            ax.grid()
+
+            # 在窗口中展示图形
+            canvas = FigureCanvasTkAgg(fig, profit_window)
+            canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
+            canvas.draw()  # 绘制图形
+
+
+    def write_profit_to_csv(self, daily_profit):
+        try:
+            with open('Profit.csv', 'w', newline='', encoding='utf-8') as csvfile:
+                writer = csv.writer(csvfile)
+                writer.writerow(["日期", "总利润"])  # 写入表头
+                for date, profit in daily_profit.items():
+                    writer.writerow([date, profit])  # 写入每一行数据
+        except Exception as e:
+            messagebox.showwarning("警告", f"写入Profit.csv时出错: {e}")
     def set_chef_number(self):
         # 关闭功能选择窗口
         self.function_window.destroy()
@@ -507,7 +644,7 @@ class RestaurantManagementSystem(tk.Tk):
         tree.bind('<Double-1>', edit_cell)
     
         # 创建退出按钮
-        exit_button = ttk.Button(chef_number_window, text="退出", command=chef_number_window.destroy)
+        exit_button = ttk.Button(chef_number_window, text="退出", command=lambda: self.exit_edit(chef_number_window))
         exit_button.pack(pady=10)
 
 
@@ -565,25 +702,31 @@ class RestaurantManagementSystem(tk.Tk):
 
         # 创建一个总价行（初始化为0）
         total_price = 0
-        total_row = tree.insert('', 'end', values=["", "", "", "", total_price])
+        total_cook_time = 0
+        total_row = tree.insert('', 'end', values=["", "", total_cook_time, "", total_price])
 
-        # 更新总价的方法
+        # 更新总价和总时长的方法
         def update_total_price():
             nonlocal total_price  # 声明总价为非局部变量
             total_price = 0  # 重置总价
+            cook_times = []  # 重置总时长
+
             for item in tree.get_children():
                 if item != total_row:  # 忽略总价行
                     values = tree.item(item, 'values')
                     quantity = eval(values[3])  # 获取数量
                     price = eval(values[1])  # 获取售价
+                    time = eval(values[2])  # 获取制作时长
                     if isinstance(quantity, int) and isinstance(price, (int, float)):
                         total = quantity * price
                         total_price += total
+                        cook_times.extend([time] * quantity)  # 累加总时长
                         # 更新总价列
                         tree.item(item, values=list(values[:3]) + [quantity, total])  # 更新数量和总价
 
+            total_cook_time = cook_dishes(cook_times)  # 调用cook_dishes计算总制作时长
             # 更新总价行
-            tree.item(total_row, values=["", "", "", "", total_price])  # 更新总价行
+            tree.item(total_row, values=["", "", total_cook_time, "", total_price])  # 更新总价行
 
         # 创建确认和退出按钮框架
         button_frame = ttk.Frame(order_window)
@@ -630,32 +773,119 @@ class RestaurantManagementSystem(tk.Tk):
         dine_in_button = ttk.Button(dining_mode_window, text="堂食", command=lambda: self.finalize_order("堂食", total_price, order_window, dining_mode_window))
         dine_in_button.pack(pady=10)
 
-        takeout_button = ttk.Button(dining_mode_window, text="外送", command=lambda: self.finalize_order("外送", total_price, order_window, dining_mode_window))
+        takeout_button = ttk.Button(dining_mode_window, text="外送", command=lambda: self.ask_for_address(total_price, order_window, dining_mode_window))
         takeout_button.pack(pady=10)
 
-    def finalize_order(self, dining_mode, total_price, order_window, dining_mode_window):
+    def ask_for_address(self, total_price, order_window, dining_mode_window):
+        # 创建输入地址的对话框
+        address_window = tk.Toplevel(dining_mode_window)
+        address_window.title("输入送餐地址")
+        address_window.focus_force() # 强制聚焦到地址输入框
+
+        window_width = 300
+        window_height = 150
+        screen_width = address_window.winfo_screenwidth()
+        screen_height = address_window.winfo_screenheight()
+        x = (screen_width - window_width) // 2
+        y = (screen_height - window_height) // 2
+        address_window.geometry(f"{window_width}x{window_height}+{x}+{y}")
+
+        ttk.Label(address_window, text="请输入送餐地址:").pack(pady=10)
+        address_entry = ttk.Entry(address_window, width=40)
+        address_entry.pack(pady=5)
+
+        def confirm_address():
+            address = address_entry.get()  # 获取用户输入的地址
+            if address:
+                self.finalize_order("外送", total_price, order_window, dining_mode_window, address)
+                address_window.destroy()  # 关闭地址输入窗口
+            else:
+                messagebox.showwarning("警告", "地址不能为空！")  # 提示用户输入地址
+                address_entry.delete(0, tk.END)  # 清空输入框
+                address_entry.focus_set()  # 重新聚焦到输入框
+
+        confirm_button = ttk.Button(address_window, text="确认", command=confirm_address)
+        confirm_button.pack(pady=10)
+
+        address_entry.bind('<Return>', lambda e: confirm_address())  # 绑定回车键
+
+
+
+    def finalize_order(self, dining_mode, total_price, order_window, dining_mode_window, address=None):
         # 获取每道菜的制作时长，构建cook_times列表
         cook_times = []
         total_row_index = len(order_window.children['!treeview'].get_children()) - 1  # 总价行的索引
 
         # 遍历所有的子项
-        for index, item in enumerate(order_window.children['!treeview'].get_children()):  
+        order_details = []  # 用于存储订单信息
+        total_cost = 0  # 总成本
+        total_profit = 0  # 总利润
+
+        for index, item in enumerate(order_window.children['!treeview'].get_children()):
             # 确保忽略最后一行（总价行）
             if index == total_row_index:
                 continue
-
+            
             values = order_window.children['!treeview'].item(item, 'values')
-            quantity = values[3]
-            cooking_time = values[2]  # 获取制作时长
-            cook_times.extend([int(cooking_time)] * int(quantity))  # 计算每道菜的总制作时长并加入列表
+            dish_name = values[0]  # 菜名
+            price = float(values[1])  # 售价（以浮点数表示）
+            quantity = int(values[3])  # 数量
+            cooking_time = int(values[2])  # 获取制作时长
+
+            # 计算总成本和利润
+            cost = self.get_cost(dish_name)  # 假设存在一个方法获取每道菜的成本
+            total_cost += cost * quantity  # 计算总成本
+            total_profit += (price - cost) * quantity  # 计算总利润
+
+            order_details.append(f"菜名: {dish_name}, 售价: {price}元, 数量: {quantity}")
+
+            cook_times.extend([cooking_time] * quantity)  # 计算每道菜的总制作时长并加入列表
 
         total_cook_time = cook_dishes(cook_times)  # 调用cook_dishes计算总制作时长
-        messagebox.showinfo("订单确认", f"您选择的用餐方式是: {dining_mode}\n总价为: {total_price}元\n总的制作时间为: {total_cook_time}分钟")
+
+        # 生成订单编号和下单时间
+        order_id = f"订单编号: {self.generate_order_id()}"
+        order_time = f"下单时间: {self.get_current_time()}"
+
+        # 将订单信息写入Bill.txt文件
+        with open('Bills.txt', 'a', encoding='utf-8') as file:
+            file.write(f"{order_id}\n")
+            file.write(f"{order_time}\n")
+            file.write("\n".join(order_details) + "\n")
+            file.write(f"总价: {total_price}元\n")
+            file.write(f"总成本: {total_cost}元\n")
+            file.write(f"总利润: {total_profit}元\n")  # 写入总利润
+            file.write("=" * 40 + "\n")  # 分隔符
+
+        if dining_mode == "外送" and address:
+            messagebox.showinfo("订单确认", f"您选择的用餐方式是: {dining_mode}\n总价为: {total_price}元\n总的制作时间为: {total_cook_time}分钟\n送餐地址: {address}")
+        else:
+            messagebox.showinfo("订单确认", f"您选择的用餐方式是: {dining_mode}\n总价为: {total_price}元\n总的制作时间为: {total_cook_time}分钟")
+
         dining_mode_window.destroy()
         order_window.destroy()
 
+    def get_cost(self, dish_name):
+        # 从Dishes.csv文件中根据菜名获取对应成本
+        try:
+            with open('Dishes.csv', newline='', encoding='utf-8') as csvfile:
+                reader = csv.reader(csvfile)
+                for row in reader:
+                    if row[0] == dish_name:  # 假设菜名在第一列，成本在第三列
+                        return float(row[2])  # 返回成本，转换为浮点数
+        except FileNotFoundError:
+            messagebox.showwarning("警告", "Dishes.csv 文件未找到")
+        return 0  # 如果未找到成本，返回0
 
+    def generate_order_id(self):
+        # 生成简单的订单编号逻辑，使用时间戳
+        import time
+        return str(int(time.time()))  # 使用当前时间作为简单的订单编号
 
+    def get_current_time(self):
+        # 获取当前时间
+        from datetime import datetime
+        return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 if __name__ == "__main__":
     app = RestaurantManagementSystem()
