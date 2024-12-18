@@ -1,15 +1,20 @@
 import tkinter as tk
 from tkinter import ttk
-from tkinter import messagebox  # 引入messagebox模块
-import csv  # 引入csv模块
-from CookManagement import cook_dishes  # 导入cook_dishes函数
+from tkinter import messagebox
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from datetime import datetime, timedelta
+import time, csv
+
+from CookManagement import cook_dishes
+from Map import get_dist_dura
 
 
 class RestaurantManagementSystem(tk.Tk):
     def __init__(self):
         super().__init__()
+
+        self.address = "四川省成都市建设北路二段四号"  # 餐厅地址
 
         self.title("餐厅管理系统V1.0")  # 设置窗口标题
         self.geometry("400x300")  # 设置窗口大小
@@ -141,7 +146,6 @@ class RestaurantManagementSystem(tk.Tk):
         # 绑定回车键和Esc键
         login_window.bind('<Return>', lambda event: verify_credentials())
         login_window.bind('<Escape>', lambda event: login_window.destroy())
-
 
     def show_function_selection(self):
         # 功能选择窗口
@@ -760,7 +764,7 @@ class RestaurantManagementSystem(tk.Tk):
         # 创建选择用餐方式的窗口
         dining_mode_window = tk.Toplevel(self)
         dining_mode_window.title("选择用餐方式")
-
+    
         window_width = 300
         window_height = 200
         screen_width = dining_mode_window.winfo_screenwidth()
@@ -768,13 +772,18 @@ class RestaurantManagementSystem(tk.Tk):
         x = (screen_width - window_width) // 2
         y = (screen_height - window_height) // 2
         dining_mode_window.geometry(f"{window_width}x{window_height}+{x}+{y}")
-
+    
+        # 创建一个框架以居中按钮
+        button_frame = ttk.Frame(dining_mode_window)
+        button_frame.pack(expand=True)  # 使用expand=True以使框架扩大并居中
+    
         # 创建按钮选择堂食或外送
-        dine_in_button = ttk.Button(dining_mode_window, text="堂食", command=lambda: self.finalize_order("堂食", total_price, order_window, dining_mode_window))
+        dine_in_button = ttk.Button(button_frame, text="堂食", command=lambda: self.finalize_order("堂食", total_price, order_window, dining_mode_window))
         dine_in_button.pack(pady=10)
-
-        takeout_button = ttk.Button(dining_mode_window, text="外送", command=lambda: self.ask_for_address(total_price, order_window, dining_mode_window))
+    
+        takeout_button = ttk.Button(button_frame, text="外送", command=lambda: self.ask_for_address(total_price, order_window, dining_mode_window))
         takeout_button.pack(pady=10)
+
 
     def ask_for_address(self, total_price, order_window, dining_mode_window):
         # 创建输入地址的对话框
@@ -822,8 +831,7 @@ class RestaurantManagementSystem(tk.Tk):
         total_profit = 0  # 总利润
 
         for index, item in enumerate(order_window.children['!treeview'].get_children()):
-            # 确保忽略最后一行（总价行）
-            if index == total_row_index:
+            if index == total_row_index:  # 忽略最后一行（总价行）
                 continue
             
             values = order_window.children['!treeview'].item(item, 'values')
@@ -832,8 +840,7 @@ class RestaurantManagementSystem(tk.Tk):
             quantity = int(values[3])  # 数量
             cooking_time = int(values[2])  # 获取制作时长
 
-            # 计算总成本和利润
-            cost = self.get_cost(dish_name)  # 假设存在一个方法获取每道菜的成本
+            cost = self.get_cost(dish_name)  # 获取菜品成本
             total_cost += cost * quantity  # 计算总成本
             total_profit += (price - cost) * quantity  # 计算总利润
 
@@ -841,11 +848,16 @@ class RestaurantManagementSystem(tk.Tk):
 
             cook_times.extend([cooking_time] * quantity)  # 计算每道菜的总制作时长并加入列表
 
-        total_cook_time = cook_dishes(cook_times)  # 调用cook_dishes计算总制作时长
+        total_cook_time = cook_dishes(cook_times)  # 计算总制作时长
+        total_cook_time_dhm = self.convert_to_dhm(total_cook_time)  # 转换为天时分格式
 
         # 生成订单编号和下单时间
         order_id = f"订单编号: {self.generate_order_id()}"
         order_time = f"下单时间: {self.get_current_time()}"
+
+        # 预计完成时间
+        estimated_finish_time = datetime.now() + timedelta(minutes=total_cook_time)  # 计算预计完成时间
+        estimated_finish_time_str = estimated_finish_time.strftime("%Y-%m-%d %H:%M:%S")  # 格式化为字符串
 
         # 将订单信息写入Bill.txt文件
         with open('Bills.txt', 'a', encoding='utf-8') as file:
@@ -858,12 +870,23 @@ class RestaurantManagementSystem(tk.Tk):
             file.write("=" * 40 + "\n")  # 分隔符
 
         if dining_mode == "外送" and address:
-            messagebox.showinfo("订单确认", f"您选择的用餐方式是: {dining_mode}\n总价为: {total_price}元\n总的制作时间为: {total_cook_time}分钟\n送餐地址: {address}")
+            diliver_time = get_dist_dura(self.address, address)[1] / 60  # 计算配送时间
+            diliver_time_str = self.convert_to_dhm(diliver_time)  # 转换为时分秒格式
+            estimated_delivery_time = estimated_finish_time + timedelta(minutes=diliver_time)  # 计算预计送达时间
+            estimated_delivery_time_str = estimated_delivery_time.strftime("%Y-%m-%d %H:%M:%S")  # 格式化为字符串
+
+            messagebox.showinfo("订单确认", 
+                f"您选择的用餐方式是: {dining_mode}\n总价: {total_price}元\n"
+                f"预计完成时间: {estimated_finish_time_str}\n送餐地址: {address}\n"
+                f"预计送达时间: {estimated_delivery_time_str}")
         else:
-            messagebox.showinfo("订单确认", f"您选择的用餐方式是: {dining_mode}\n总价为: {total_price}元\n总的制作时间为: {total_cook_time}分钟")
+            messagebox.showinfo("订单确认", 
+                f"您选择的用餐方式是: {dining_mode}\n总价: {total_price}元\n"
+                f"预计完成时间: {estimated_finish_time_str}")
 
         dining_mode_window.destroy()
         order_window.destroy()
+
 
     def get_cost(self, dish_name):
         # 从Dishes.csv文件中根据菜名获取对应成本
@@ -879,13 +902,32 @@ class RestaurantManagementSystem(tk.Tk):
 
     def generate_order_id(self):
         # 生成简单的订单编号逻辑，使用时间戳
-        import time
         return str(int(time.time()))  # 使用当前时间作为简单的订单编号
 
     def get_current_time(self):
         # 获取当前时间
-        from datetime import datetime
         return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    def convert_to_dhm(self, minutes):
+        # 计算总天数
+        days = int(minutes // 1440)
+        # 计算小时数
+        hours = int((minutes % 1440) // 60)
+        # 计算剩余分钟数
+        remaining_minutes = int(minutes % 60)
+
+        # 构建输出字符串
+        parts = []
+        if days > 0:
+            parts.append(f"{days}天")
+        if hours > 0:
+            parts.append(f"{hours}小时")
+        if remaining_minutes > 0:
+            parts.append(f"{remaining_minutes}分钟")
+
+        return ' '.join(parts) if parts else "0分钟"  # 如果所有部分为0时显示"0分钟"
+
+
 
 if __name__ == "__main__":
     app = RestaurantManagementSystem()
