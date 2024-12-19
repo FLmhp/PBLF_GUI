@@ -16,7 +16,7 @@ class RestaurantManagementSystem(tk.Tk):
 
         self.address = "四川省成都市建设北路二段四号"  # 餐厅地址
 
-        self.title("餐厅管理系统V1.1")  # 设置窗口标题
+        self.title("餐厅管理系统V2.0")  # 设置窗口标题
         self.geometry("400x300")  # 设置窗口大小
         self.configure(bg="#fff143")  # 更改主窗口颜色
 
