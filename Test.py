@@ -16,7 +16,7 @@ class RestaurantManagementSystem(tk.Tk):
 
         self.address = "四川省成都市建设北路二段四号"  # 餐厅地址
 
-        self.title("餐厅管理系统V1.0")  # 设置窗口标题
+        self.title("餐厅管理系统V1.1")  # 设置窗口标题
         self.geometry("400x300")  # 设置窗口大小
         self.configure(bg="#fff143")  # 更改主窗口颜色
 
@@ -233,6 +233,16 @@ class RestaurantManagementSystem(tk.Tk):
                 messagebox.showwarning("警告", "Dishes.csv 文件未找到")
     
         load_data()
+
+        # 保存数据到 Dishes.csv
+        def save_data():
+            try:
+                with open('Dishes.csv', 'w', newline='', encoding='utf-8') as csvfile:
+                    writer = csv.writer(csvfile)
+                    for child in tree.get_children():
+                        writer.writerow(tree.item(child, 'values'))  # 写入每一行的值
+            except Exception as e:
+                messagebox.showwarning("警告", f"保存信息时出错: {e}")
         
         # 删除选中行的函数
         def delete_selected_row():
@@ -240,10 +250,12 @@ class RestaurantManagementSystem(tk.Tk):
             if selected_item:
                 for item in selected_item:
                     tree.delete(item)  # 删除选中的行
+                save_data()  # 删除后保存数据
         
         # 新增空白行的函数
         def add_blank_row():
             tree.insert('', 'end', values=("", "", "", ""))  # 插入一行空白行
+            save_data()  # 删除后保存数据
         
         # 创建按钮框架，设置在Treeview的下方并上下居中
         button_frame = ttk.Frame(edit_window)
@@ -566,7 +578,6 @@ class RestaurantManagementSystem(tk.Tk):
             canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
             canvas.draw()  # 绘制图形
 
-
     def write_profit_to_csv(self, daily_profit):
         try:
             with open('Profit.csv', 'w', newline='', encoding='utf-8') as csvfile:
@@ -604,7 +615,7 @@ class RestaurantManagementSystem(tk.Tk):
         for col in columns:
             tree.heading(col, text=col)
             tree.column(col, anchor="center")
-    
+
         # 加载厨师数量数据
         def load_data():
             try:
@@ -650,8 +661,6 @@ class RestaurantManagementSystem(tk.Tk):
         # 创建退出按钮
         exit_button = ttk.Button(chef_number_window, text="退出", command=lambda: self.exit_edit(chef_number_window))
         exit_button.pack(pady=10)
-
-
 
     def order_mode(self):
         # 进入用户点餐模式的逻辑实现
@@ -784,7 +793,6 @@ class RestaurantManagementSystem(tk.Tk):
         takeout_button = ttk.Button(button_frame, text="外送", command=lambda: self.ask_for_address(total_price, order_window, dining_mode_window))
         takeout_button.pack(pady=10)
 
-
     def ask_for_address(self, total_price, order_window, dining_mode_window):
         # 创建输入地址的对话框
         address_window = tk.Toplevel(dining_mode_window)
@@ -817,8 +825,6 @@ class RestaurantManagementSystem(tk.Tk):
         confirm_button.pack(pady=10)
 
         address_entry.bind('<Return>', lambda e: confirm_address())  # 绑定回车键
-
-
 
     def finalize_order(self, dining_mode, total_price, order_window, dining_mode_window, address=None):
         # 获取每道菜的制作时长，构建cook_times列表
@@ -887,7 +893,6 @@ class RestaurantManagementSystem(tk.Tk):
         dining_mode_window.destroy()
         order_window.destroy()
 
-
     def get_cost(self, dish_name):
         # 从Dishes.csv文件中根据菜名获取对应成本
         try:
@@ -926,8 +931,6 @@ class RestaurantManagementSystem(tk.Tk):
             parts.append(f"{remaining_minutes}分钟")
 
         return ' '.join(parts) if parts else "0分钟"  # 如果所有部分为0时显示"0分钟"
-
-
 
 if __name__ == "__main__":
     app = RestaurantManagementSystem()

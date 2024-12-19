@@ -60,7 +60,7 @@ def cook_dishes(cook_times):
         chefs[chef_key]['total_time'] += actual_time
 
     # return chefs
-    return max([i['total_time'] for  i in list(chefs.values())])
+    return round(max([i['total_time'] for  i in list(chefs.values())]), 2)  # 取最长制作时间的厨师
 
 # 示例用法
 # cook_times = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200]  # 制作时长
